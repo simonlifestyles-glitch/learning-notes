@@ -44,6 +44,7 @@ JS    →  行為（決定怎麼動起來）
 | HTML | 人在哪裡 | 標題、圖片、按鈕、清單... |
 | CSS | 穿什麼衣服 | 顏色、字體、間距、圓角... |
 | JavaScript | 做什麼動作 | 點擊、彈窗、動畫、驗證... |
+> 🌐 [點我直接在瀏覽器操作示範](https://simonlifestyles-glitch.github.io/learning-notes/web-demo.html)
 
 ---
 
