@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>網頁三劍客：HTML + CSS + JavaScript</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Source+Code+Pro:wght@400;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --html-color: #c0392b;
+      --html-light: #fdf0ef;
+      --html-mid: #e8a09a;
+      --css-color: #1a6faa;
+      --css-light: #eef5fb;
+      --css-mid: #90bcd8;
+      --js-color: #d4820a;
+      --js-light: #fdf6e8;
+      --js-mid: #e8c47a;
+      --bg: #f8f7f4;
+      --text: #1a1a1a;
+      --text-muted: #666;
+      --border: #e0ddd8;
+      --radius: 14px;
+      --mono: 'Source Code Pro', monospace;
+      --sans: 'Noto Sans TC', sans-serif;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+
+    /* ── 頁首 ── */
+    .hero {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 60px;
+    }
+    .hero h1 {
+      font-size: clamp(24px, 5vw, 38px);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    .hero p {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .badge-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 14px;
+      border-radius: 99px;
+      letter-spacing: 0.5px;
+    }
+    .badge-html { background: var(--html-color); color: #fff; }
+    .badge-css  { background: var(--css-color);  color: #fff; }
+    .badge-js   { background: var(--js-color);   color: #fff; }
+
+    /* ── 區塊共用 ── */
+    .section {
+      max-width: 780px;
+      margin: 0 auto 48px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      background: #fff;
+    }
+    .section-header {
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .section-icon {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .section-title { font-size: 18px; font-weight: 700; }
+    .section-sub   { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+    /* 顏色主題 */
+    .html .section-header { background: var(--html-light); }
+    .html .section-icon   { background: var(--html-color); }
+    .html .section-title  { color: var(--html-color); }
+    .css  .section-header { background: var(--css-light); }
+    .css  .section-icon   { background: var(--css-color); }
+    .css  .section-title  { color: var(--css-color); }
+    .js   .section-header { background: var(--js-light); }
+    .js   .section-icon   { background: var(--js-color); }
+    .js   .section-title  { color: var(--js-color); }
+
+    /* ── 兩欄排版 ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 600px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+    .col-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .code-pane {
+      padding: 24px 28px;
+      border-right: 1.5px solid var(--border);
+      background: #fafaf8;
+    }
+    .preview-pane {
+      padding: 24px 28px;
+    }
+
+    /* ── 程式碼區塊 ── */
+    pre {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.9;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .c-tag    { color: #c0392b; }
+    .c-attr   { color: #16a085; }
+    .c-val    { color: #8e44ad; }
+    .c-str    { color: #d35400; }
+    .c-sel    { color: #1a6faa; }
+    .c-prop   { color: #16a085; }
+    .c-num    { color: #8e44ad; }
+    .c-kw     { color: #c0392b; font-style: italic; }
+    .c-fn     { color: #16a085; }
+    .c-cmt    { color: #aaa; font-style: italic; }
+
+    /* ── HTML 預覽 ── */
+    .preview-html h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .preview-html p  { font-size: 14px; color: #444; margin-bottom: 6px; }
+    .preview-html h2 { font-size: 16px; font-weight: 700; margin: 12px 0 6px; }
+    .preview-html ul { padding-left: 20px; font-size: 14px; color: #444; margin-bottom: 10px; }
+    .preview-html a  { color: #1a6faa; font-size: 14px; }
+
+    /* ── CSS 預覽 ── */
+    .preview-css-box {
+      background: #FFF8F0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .preview-css-box h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #993C1D;
+      margin-bottom: 8px;
+    }
+    .preview-css-box p {
+      font-size: 13px;
+      color: #712B13;
+      margin-bottom: 14px;
+      line-height: 1.7;
+    }
+    .preview-css-btn {
+      display: inline-block;
+      background: #D85A30;
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      padding: 9px 22px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--sans);
+      cursor: pointer;
+    }
+
+    /* ── JS 預覽 ── */
+    .js-demo {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .js-btn {
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--js-color);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 24px;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+    .js-btn:active { transform: scale(0.96); }
+    .js-msg {
+      font-size: 14px;
+      color: var(--text-muted);
+      min-height: 22px;
+      transition: opacity 0.3s;
+    }
+    .js-counter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .js-count-btn {
+      font-family: var(--sans);
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      border: 1.5px solid var(--js-mid);
+      background: var(--js-light);
+      color: var(--js-color);
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .js-count-display {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--js-color);
+      min-width: 48px;
+      text-align: center;
+    }
+
+    /* ── 說明卡片 ── */
+    .explain-row {
+      display: flex;
+      gap: 10px;
+      padding: 16px 28px;
+      background: var(--bg);
+      border-top: 1.5px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .explain-chip {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      line-height: 1.5;
+    }
+    .explain-chip b { color: var(--text); }
+
+    /* ── 總結 ── */
+    .summary {
+      max-width: 780px;
+      margin: 0 auto;
+      background: #1a1a1a;
+      color: #f0ede8;
+      border-radius: var(--radius);
+      padding: 32px 36px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      text-align: center;
+    }
+    @media (max-width: 560px) {
+      .summary { grid-template-columns: 1fr; }
+    }
+    .summary-item h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .summary-item p  { font-size: 12px; color: #aaa; line-height: 1.6; }
+    .summary-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      margin: 0 auto 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 頁首 -->
+<div class="hero">
+  <h1>網頁的三種語言</h1>
+  <p>每個你看到的網站，都是這三種語言合作完成的。<br>下面用同一個「小店頁面」，示範三種語言各自做什麼。</p>
+  <div class="badge-row">
+    <span class="badge badge-html">HTML 骨架</span>
+    <span class="badge badge-css">CSS 外觀</span>
+    <span class="badge badge-js">JavaScript 互動</span>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════
+     第一區：HTML
+════════════════════════════ -->
+<div class="section html">
+  <div class="section-header">
+    <div class="section-icon">🧱</div>
+    <div>
+      <div class="section-title">HTML — 骨架</div>
+      <div class="section-sub">決定「有什麼東西」，用標籤把內容包起來</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="code-pane">
+      <div class="col-label">程式碼</div>
+      <pre><span class="c-tag">&lt;h1&gt;</span>我的小店<span class="c-tag">&lt;/h1&gt;</span>
+
+<span class="c-tag">&lt;p&gt;</span>歡迎光臨，這裡賣手工餅乾。<span class="c-tag">&lt;/p&gt;</span>
+
+<span class="c-tag">&lt;ul&gt;</span>
+  <span class="c-tag">&lt;li&gt;</span>巧克力餅乾<span class="c-tag">&lt;/li&gt;</span>
+  <span class="c-tag">&lt;li&gt;</span>抹茶餅乾<span class="c-tag">&lt;/li&gt;</span>
+  <span class="c-tag">&lt;li&gt;</span>原味餅乾<span class="c-tag">&lt;/li&gt;</span>
+<span class="c-tag">&lt;/ul&gt;</span>
+
+<span class="c-tag">&lt;button&gt;</span>立即購買<span class="c-tag">&lt;/button&gt;</span></pre>
+    </div>
+    <div class="preview-pane">
+      <div class="col-label">瀏覽器看起來</div>
+      <div class="preview-html">
+        <h1>我的小店</h1>
+        <p>歡迎光臨，這裡賣手工餅乾。</p>
+        <h2>商品清單</h2>
+        <ul>
+          <li>巧克力餅乾</li>
+          <li>抹茶餅乾</li>
+          <li>原味餅乾</li>
+        </ul>
+        <button style="font-family:inherit;font-size:14px;padding:5px 12px;cursor:pointer;">立即購買</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="explain-row">
+    <span class="explain-chip"><b>&lt;h1&gt;</b> 大標題</span>
+    <span class="explain-chip"><b>&lt;p&gt;</b> 一段文字</span>
+    <span class="explain-chip"><b>&lt;ul&gt; &lt;li&gt;</b> 清單</span>
+    <span class="explain-chip"><b>&lt;button&gt;</b> 按鈕</span>
+    <span class="explain-chip">沒有顏色、沒有樣式，全是預設黑白</span>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════
+     第二區：CSS
+════════════════════════════ -->
+<div class="section css">
+  <div class="section-header">
+    <div class="section-icon">🎨</div>
+    <div>
+      <div class="section-title">CSS — 外觀</div>
+      <div class="section-sub">決定「長什麼樣子」，設定顏色、字型、圓角、間距</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="code-pane">
+      <div class="col-label">程式碼</div>
+      <pre><span class="c-cmt">/* 頁面背景 */</span>
+<span class="c-sel">body</span> {
+  <span class="c-prop">background-color</span>: <span class="c-str">#FFF8F0</span>;
+}
+
+<span class="c-cmt">/* 大標題 */</span>
+<span class="c-sel">h1</span> {
+  <span class="c-prop">color</span>: <span class="c-str">#993C1D</span>;
+  <span class="c-prop">font-size</span>: <span class="c-num">28px</span>;
+}
+
+<span class="c-cmt">/* 按鈕 */</span>
+<span class="c-sel">button</span> {
+  <span class="c-prop">background-color</span>: <span class="c-str">#D85A30</span>;
+  <span class="c-prop">color</span>: <span class="c-str">white</span>;
+  <span class="c-prop">border-radius</span>: <span class="c-num">20px</span>;
+  <span class="c-prop">padding</span>: <span class="c-num">10px 24px</span>;
+  <span class="c-prop">border</span>: <span class="c-str">none</span>;
+}</pre>
+    </div>
+    <div class="preview-pane">
+      <div class="col-label">瀏覽器看起來</div>
+      <div class="preview-css-box">
+        <h1>我的小店</h1>
+        <p>歡迎光臨，這裡賣手工餅乾。</p>
+        <button class="preview-css-btn">立即購買</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="explain-row">
+    <span class="explain-chip"><b>color</b> 文字顏色</span>
+    <span class="explain-chip"><b>background-color</b> 背景顏色</span>
+    <span class="explain-chip"><b>font-size</b> 字體大小</span>
+    <span class="explain-chip"><b>border-radius</b> 圓角</span>
+    <span class="explain-chip"><b>padding</b> 內部留白</span>
+    <span class="explain-chip">同樣的 HTML，加了 CSS 就完全不同</span>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════
+     第三區：JavaScript
+════════════════════════════ -->
+<div class="section js">
+  <div class="section-header">
+    <div class="section-icon">⚡</div>
+    <div>
+      <div class="section-title">JavaScript — 互動</div>
+      <div class="section-sub">決定「怎麼動起來」，監聽使用者的動作然後改變頁面</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="code-pane">
+      <div class="col-label">程式碼</div>
+      <pre><span class="c-cmt">// 按鈕點擊 → 顯示訊息</span>
+<span class="c-kw">function</span> <span class="c-fn">購買</span>() {
+  <span class="c-kw">let</span> 訊息 =
+    document.<span class="c-fn">getElementById</span>(<span class="c-str">"msg"</span>);
+  訊息.textContent =
+    <span class="c-str">"已加入購物車！🛒"</span>;
+}
+
+<span class="c-cmt">// 計數器：加減數量</span>
+<span class="c-kw">let</span> 數量 = <span class="c-num">0</span>;
+
+<span class="c-kw">function</span> <span class="c-fn">加</span>() {
+  數量 = 數量 + <span class="c-num">1</span>;
+  document.<span class="c-fn">getElementById</span>(
+    <span class="c-str">"count"</span>).textContent = 數量;
+}
+
+<span class="c-kw">function</span> <span class="c-fn">減</span>() {
+  <span class="c-kw">if</span> (數量 > <span class="c-num">0</span>) {
+    數量 = 數量 - <span class="c-num">1</span>;
+    document.<span class="c-fn">getElementById</span>(
+      <span class="c-str">"count"</span>).textContent = 數量;
+  }
+}</pre>
+    </div>
+    <div class="preview-pane">
+      <div class="col-label">實際可以操作 👇</div>
+      <div class="js-demo">
+        <div>
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">選擇購買數量：</div>
+          <div class="js-counter-row">
+            <button class="js-count-btn" onclick="減()">−</button>
+            <div class="js-count-display" id="count">0</div>
+            <button class="js-count-btn" onclick="加()">+</button>
+          </div>
+        </div>
+        <button class="js-btn" onclick="購買()">立即購買</button>
+        <div class="js-msg" id="msg">← 按下按鈕試試看</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="explain-row">
+    <span class="explain-chip"><b>function</b> 定義一組可重複執行的指令</span>
+    <span class="explain-chip"><b>let</b> 儲存一個數值（變數）</span>
+    <span class="explain-chip"><b>getElementById</b> 找到頁面上的某個元素</span>
+    <span class="explain-chip"><b>if</b> 條件判斷（數量不能低於 0）</span>
+    <span class="explain-chip">按鈕沒重新載入，頁面就改變了</span>
+  </div>
+</div>
+
+
+<!-- 總結 -->
+<div class="summary">
+  <div class="summary-item">
+    <div class="summary-dot" style="background:#c0392b;"></div>
+    <h3>HTML</h3>
+    <p>骨架<br>決定有什麼東西<br>標籤包內容</p>
+  </div>
+  <div class="summary-item">
+    <div class="summary-dot" style="background:#1a6faa;"></div>
+    <h3>CSS</h3>
+    <p>外觀<br>決定長什麼樣子<br>選誰、改什麼</p>
+  </div>
+  <div class="summary-item">
+    <div class="summary-dot" style="background:#d4820a;"></div>
+    <h3>JavaScript</h3>
+    <p>互動<br>決定怎麼動起來<br>監聽動作、改變頁面</p>
+  </div>
+</div>
+
+
+<script>
+  let 數量 = 0;
+
+  function 購買() {
+    const 訊息 = document.getElementById('msg');
+    if (數量 === 0) {
+      訊息.textContent = '請先選擇數量！';
+      訊息.style.color = '#c0392b';
+    } else {
+      訊息.textContent = `已加入購物車 ${數量} 個！🛒`;
+      訊息.style.color = '#d4820a';
+    }
+  }
+
+  function 加() {
+    數量++;
+    document.getElementById('count').textContent = 數量;
+  }
+
+  function 減() {
+    if (數量 > 0) {
+      數量--;
+      document.getElementById('count').textContent = 數量;
+    }
+  }
+</script>
+
+</body>
+</html>
