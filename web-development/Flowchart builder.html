@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>流程圖製作工具</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0e0f14;
+    --surface: #16181f;
+    --surface2: #1e2028;
+    --border: #2a2d38;
+    --accent: #5b8af0;
+    --accent2: #f05b8a;
+    --accent3: #5bf0b8;
+    --text: #e8eaf0;
+    --text-dim: #7880a0;
+    --node-process: #5b8af0;
+    --node-decision: #f0a05b;
+    --node-start: #5bf0b8;
+    --node-end: #f05b8a;
+    --node-io: #a05bf0;
+    --shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* TOOLBAR */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  #toolbar .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-right: 8px;
+    white-space: nowrap;
+  }
+
+  .sep { width: 1px; height: 28px; background: var(--border); margin: 0 4px; }
+
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tool-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+  .tool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .node-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .node-btn:hover { opacity: 0.8; transform: translateY(-1px); }
+
+  .dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* MAIN */
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  /* PANEL */
+  #panel {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .panel-section h3 {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .node-palette {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: grab;
+    font-size: 12px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .palette-item:hover { border-color: currentColor; transform: translateX(2px); }
+  .palette-item:active { cursor: grabbing; }
+
+  .palette-icon { font-size: 16px; }
+
+  #props-panel { display: flex; flex-direction: column; gap: 8px; }
+  #props-panel label { font-size: 11px; color: var(--text-dim); }
+  #props-panel input, #props-panel select, #props-panel textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #props-panel input:focus, #props-panel select:focus, #props-panel textarea:focus {
+    border-color: var(--accent);
+  }
+  #props-panel textarea { resize: vertical; min-height: 60px; }
+
+  .color-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .color-swatch {
+    width: 22px; height: 22px; border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent; transition: border-color 0.15s;
+  }
+  .color-swatch.selected { border-color: #fff; }
+
+  /* CANVAS */
+  #canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle, #2a2d38 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    cursor: default;
+  }
+
+  /* SVG arrows */
+  .arrow-line {
+    stroke: var(--text-dim);
+    stroke-width: 2;
+    fill: none;
+    marker-end: url(#arrowhead);
+    cursor: pointer;
+    transition: stroke 0.15s;
+  }
+  .arrow-line:hover, .arrow-line.selected { stroke: var(--accent); }
+  .arrow-label {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 11px;
+    fill: var(--text-dim);
+    cursor: pointer;
+  }
+
+  /* Nodes */
+  .flow-node {
+    position: absolute;
+    cursor: move;
+    user-select: none;
+    transition: filter 0.15s;
+  }
+  .flow-node:hover { filter: brightness(1.1); }
+  .flow-node.selected .node-body { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .node-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.3;
+    word-break: break-word;
+    min-width: 120px;
+    min-height: 48px;
+    padding: 10px 14px;
+    position: relative;
+  }
+
+  .node-type-start .node-body,
+  .node-type-end .node-body {
+    border-radius: 999px;
+    padding: 10px 24px;
+  }
+
+  .node-type-process .node-body {
+    border-radius: 8px;
+  }
+
+  .node-type-decision .node-body {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    min-width: 140px;
+    min-height: 80px;
+    padding: 20px 30px;
+  }
+
+  .node-type-io .node-body {
+    clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%);
+    border-radius: 0;
+    padding: 10px 28px;
+  }
+
+  /* Connection ports */
+  .port {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    cursor: crosshair;
+    opacity: 0;
+    transition: opacity 0.15s, transform 0.15s;
+    transform: scale(0.8);
+    z-index: 10;
+  }
+  .flow-node:hover .port, .port.active { opacity: 1; transform: scale(1); }
+
+  .port-top    { top: -5px; left: 50%; transform: translateX(-50%); }
+  .port-bottom { bottom: -5px; left: 50%; transform: translateX(-50%); }
+  .port-left   { left: -5px; top: 50%; transform: translateY(-50%); }
+  .port-right  { right: -5px; top: 50%; transform: translateY(-50%); }
+  .flow-node:hover .port-top    { opacity: 1; transform: translateX(-50%) scale(1); }
+  .flow-node:hover .port-bottom { opacity: 1; transform: translateX(-50%) scale(1); }
+  .flow-node:hover .port-left   { opacity: 1; transform: translateY(-50%) scale(1); }
+  .flow-node:hover .port-right  { opacity: 1; transform: translateY(-50%) scale(1); }
+
+  /* Status bar */
+  #statusbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 5px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  /* Mini hint */
+  .hint {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 11px;
+    color: var(--text-dim);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 999;
+  }
+  .hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <span class="logo">FLOWCRAFT</span>
+  <div class="sep"></div>
+  <button class="tool-btn" id="btn-select" onclick="setMode('select')">&#9654; 選取</button>
+  <button class="tool-btn" id="btn-connect" onclick="setMode('connect')">&#8594; 連線</button>
+  <div class="sep"></div>
+  <button class="tool-btn" onclick="deleteSelected()">🗑 刪除</button>
+  <button class="tool-btn" onclick="clearAll()">✕ 清除</button>
+  <div class="sep"></div>
+  <button class="tool-btn" onclick="exportSVG()">⬇ 匯出 SVG</button>
+  <button class="tool-btn" onclick="exportPNG()">⬇ 匯出 PNG</button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- LEFT PANEL -->
+  <div id="panel">
+    <div class="panel-section">
+      <h3>節點類型</h3>
+      <div class="node-palette">
+        <div class="palette-item" style="color:var(--node-start);border-color:var(--node-start)20;"
+             draggable="true" ondragstart="dragStart(event,'start')">
+          <span class="palette-icon">⬭</span> 開始 / 結束
+        </div>
+        <div class="palette-item" style="color:var(--node-process);border-color:var(--node-process)20;"
+             draggable="true" ondragstart="dragStart(event,'process')">
+          <span class="palette-icon">▭</span> 處理程序
+        </div>
+        <div class="palette-item" style="color:var(--node-decision);border-color:var(--node-decision)20;"
+             draggable="true" ondragstart="dragStart(event,'decision')">
+          <span class="palette-icon">◇</span> 判斷 / 決策
+        </div>
+        <div class="palette-item" style="color:var(--node-io);border-color:var(--node-io)20;"
+             draggable="true" ondragstart="dragStart(event,'io')">
+          <span class="palette-icon">▱</span> 輸入 / 輸出
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>屬性</h3>
+      <div id="props-panel">
+        <p style="font-size:12px;color:var(--text-dim)">點選節點以編輯屬性</p>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>操作說明</h3>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.8">
+        • 拖曳節點到畫布<br>
+        • 選取模式：點選/移動節點<br>
+        • 連線模式：點擊起點連接終點<br>
+        • 雙擊節點以編輯文字<br>
+        • Delete 鍵刪除選取
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="canvas-wrap"
+       ondragover="event.preventDefault()"
+       ondrop="dropNode(event)">
+    <svg id="svg-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#7880a0"/>
+        </marker>
+        <marker id="arrowhead-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#5b8af0"/>
+        </marker>
+      </defs>
+      <g id="arrows-group"></g>
+    </svg>
+    <div id="canvas"></div>
+    <!-- temp connection line -->
+    <svg id="svg-temp" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible">
+      <line id="temp-line" x1="0" y1="0" x2="0" y2="0" stroke="#5b8af0" stroke-width="2" stroke-dasharray="6,3" opacity="0"/>
+    </svg>
+  </div>
+</div>
+
+<!-- STATUSBAR -->
+<div id="statusbar">
+  <span id="status-mode">模式：選取</span>
+  <span>|</span>
+  <span id="status-nodes">節點：0</span>
+  <span>|</span>
+  <span id="status-arrows">連線：0</span>
+  <span style="margin-left:auto">雙擊節點編輯文字 · Delete 刪除</span>
+</div>
+
+<div class="hint" id="hint"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────
+let mode = 'select';
+let nodes = [];
+let arrows = [];
+let nodeId = 0;
+let arrowId = 0;
+let selectedId = null;
+let selectedArrowId = null;
+let draggingNode = null;
+let dragOffset = { x: 0, y: 0 };
+let connectSource = null; // { nodeId, port }
+
+const NODE_COLORS = {
+  start:    { bg: '#1a3d2e', border: '#5bf0b8', text: '#5bf0b8' },
+  end:      { bg: '#3d1a2e', border: '#f05b8a', text: '#f05b8a' },
+  process:  { bg: '#1a2a4d', border: '#5b8af0', text: '#e8eaf0' },
+  decision: { bg: '#3d2e1a', border: '#f0a05b', text: '#f0a05b' },
+  io:       { bg: '#2a1a4d', border: '#a05bf0', text: '#e8eaf0' },
+};
+
+const DEFAULT_LABELS = {
+  start: '開始', end: '結束', process: '處理程序', decision: '判斷', io: '輸入/輸出'
+};
+
+// ─── MODE ────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-select').classList.toggle('active', m === 'select');
+  document.getElementById('btn-connect').classList.toggle('active', m === 'connect');
+  document.getElementById('status-mode').textContent = '模式：' + (m === 'select' ? '選取' : '連線');
+  connectSource = null;
+  hideTempLine();
+  showHint(m === 'connect' ? '點擊節點連接點開始連線' : '');
+}
+
+// ─── DRAG FROM PALETTE ───────────────────────────────────────────
+let dragType = null;
+function dragStart(e, type) { dragType = type; }
+
+function dropNode(e) {
+  e.preventDefault();
+  if (!dragType) return;
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const x = e.clientX - rect.left - 60;
+  const y = e.clientY - rect.top - 25;
+  createNode(dragType, x, y);
+  dragType = null;
+}
+
+// ─── CREATE NODE ─────────────────────────────────────────────────
+function createNode(type, x, y, label) {
+  const id = ++nodeId;
+  const realType = (type === 'end') ? 'end' : type;
+  const displayType = (type === 'end') ? 'start' : type; // share same CSS class
+  const node = {
+    id, type, x, y,
+    label: label || DEFAULT_LABELS[type] || '節點',
+  };
+  nodes.push(node);
+  renderNode(node);
+  updateStatus();
+  return node;
+}
+
+function renderNode(node) {
+  const canvas = document.getElementById('canvas');
+  let el = document.getElementById('node-' + node.id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'node-' + node.id;
+    el.className = 'flow-node node-type-' + (node.type === 'end' ? 'end' : node.type);
+    canvas.appendChild(el);
+
+    // Ports
+    ['top','bottom','left','right'].forEach(pos => {
+      const port = document.createElement('div');
+      port.className = 'port port-' + pos;
+      port.dataset.pos = pos;
+      port.dataset.nodeId = node.id;
+      port.addEventListener('mousedown', onPortMouseDown);
+      el.appendChild(port);
+    });
+
+    el.addEventListener('mousedown', onNodeMouseDown);
+    el.addEventListener('dblclick', onNodeDblClick);
+  }
+
+  const colors = NODE_COLORS[node.type] || NODE_COLORS.process;
+  el.style.left = node.x + 'px';
+  el.style.top  = node.y + 'px';
+
+  let bodyHtml = `<div class="node-body" style="
+    background:${colors.bg};
+    border: 2px solid ${colors.border};
+    color:${colors.text};
+    box-shadow: 0 0 16px ${colors.border}33;
+  ">${escHtml(node.label)}</div>`;
+
+  // Keep ports
+  const ports = el.querySelectorAll('.port');
+  el.innerHTML = bodyHtml;
+  ports.forEach(p => el.appendChild(p));
+
+  // Re-attach port listeners
+  el.querySelectorAll('.port').forEach(p => {
+    p.addEventListener('mousedown', onPortMouseDown);
+  });
+  el.addEventListener('mousedown', onNodeMouseDown);
+  el.addEventListener('dblclick', onNodeDblClick);
+
+  if (selectedId === node.id) el.classList.add('selected');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ─── NODE INTERACTION ────────────────────────────────────────────
+function onNodeMouseDown(e) {
+  if (e.target.classList.contains('port')) return;
+  if (mode === 'connect') return;
+  e.stopPropagation();
+  const el = e.currentTarget;
+  const id = parseInt(el.id.split('-')[1]);
+  selectNode(id);
+
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const node = nodes.find(n => n.id === id);
+  dragOffset = { x: e.clientX - rect.left - node.x, y: e.clientY - rect.top - node.y };
+  draggingNode = id;
+}
+
+function onNodeDblClick(e) {
+  const el = e.currentTarget;
+  const id = parseInt(el.id.split('-')[1]);
+  const node = nodes.find(n => n.id === id);
+  const newLabel = prompt('編輯節點文字：', node.label);
+  if (newLabel !== null) {
+    node.label = newLabel;
+    renderNode(node);
+    refreshArrows();
+    updateProps(node);
+  }
+}
+
+function selectNode(id) {
+  selectedId = id;
+  selectedArrowId = null;
+  nodes.forEach(n => {
+    const el = document.getElementById('node-' + n.id);
+    if (el) el.classList.toggle('selected', n.id === id);
+  });
+  document.querySelectorAll('.arrow-line').forEach(a => a.classList.remove('selected'));
+  const node = nodes.find(n => n.id === id);
+  if (node) updateProps(node);
+}
+
+function selectArrow(id) {
+  selectedArrowId = id;
+  selectedId = null;
+  nodes.forEach(n => {
+    const el = document.getElementById('node-' + n.id);
+    if (el) el.classList.remove('selected');
+  });
+  document.querySelectorAll('.arrow-line').forEach(a => {
+    a.classList.toggle('selected', parseInt(a.dataset.id) === id);
+  });
+  document.getElementById('props-panel').innerHTML = '<p style="font-size:12px;color:var(--text-dim)">已選取連線</p>';
+}
+
+// ─── PORT / CONNECT ──────────────────────────────────────────────
+function onPortMouseDown(e) {
+  e.stopPropagation();
+  if (mode !== 'connect') return;
+  const port = e.currentTarget;
+  const nodeId = parseInt(port.dataset.nodeId);
+  const pos = port.dataset.pos;
+
+  if (!connectSource) {
+    connectSource = { nodeId, pos };
+    port.classList.add('active');
+    showHint('點擊目標節點的連接點完成連線');
+  } else {
+    if (connectSource.nodeId === nodeId) { connectSource = null; hideTempLine(); return; }
+    createArrow(connectSource.nodeId, connectSource.pos, nodeId, pos);
+    connectSource = null;
+    hideTempLine();
+    showHint('連線完成！');
+  }
+}
+
+// ─── ARROWS ──────────────────────────────────────────────────────
+function createArrow(fromId, fromPos, toId, toPos, label) {
+  const id = ++arrowId;
+  arrows.push({ id, fromId, fromPos, toId, toPos, label: label || '' });
+  renderArrow(arrows[arrows.length - 1]);
+  updateStatus();
+}
+
+function getPortCenter(nodeId, pos) {
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return { x: 0, y: 0 };
+  const el = document.getElementById('node-' + nodeId);
+  if (!el) return { x: 0, y: 0 };
+  const w = el.offsetWidth, h = el.offsetHeight;
+  const cx = node.x + w / 2, cy = node.y + h / 2;
+  if (pos === 'top')    return { x: cx, y: node.y };
+  if (pos === 'bottom') return { x: cx, y: node.y + h };
+  if (pos === 'left')   return { x: node.x, y: cy };
+  if (pos === 'right')  return { x: node.x + w, y: cy };
+  return { x: cx, y: cy };
+}
+
+function renderArrow(arrow) {
+  const g = document.getElementById('arrows-group');
+  let existing = document.getElementById('arrow-g-' + arrow.id);
+  if (existing) existing.remove();
+
+  const from = getPortCenter(arrow.fromId, arrow.fromPos);
+  const to   = getPortCenter(arrow.toId,   arrow.toPos);
+
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
+
+  // Curved path
+  let cx1, cy1, cx2, cy2;
+  const d = Math.sqrt(dx*dx+dy*dy);
+  const bend = Math.min(80, d * 0.4);
+  const fromOff = portOffset(arrow.fromPos, bend);
+  const toOff   = portOffset(arrow.toPos,   bend);
+  cx1 = from.x + fromOff.x; cy1 = from.y + fromOff.y;
+  cx2 = to.x   + toOff.x;   cy2 = to.y   + toOff.y;
+
+  const pathD = `M${from.x},${from.y} C${cx1},${cy1} ${cx2},${cy2} ${to.x},${to.y}`;
+
+  const grp = document.createElementNS('http://www.w3.org/2000/svg','g');
+  grp.id = 'arrow-g-' + arrow.id;
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', pathD);
+  path.setAttribute('class','arrow-line');
+  path.setAttribute('style','pointer-events:stroke');
+  path.dataset.id = arrow.id;
+  path.addEventListener('click', () => selectArrow(arrow.id));
+
+  grp.appendChild(path);
+
+  if (arrow.label) {
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', mx); txt.setAttribute('y', my - 6);
+    txt.setAttribute('text-anchor','middle');
+    txt.setAttribute('class','arrow-label');
+    txt.textContent = arrow.label;
+    grp.appendChild(txt);
+  }
+
+  g.appendChild(grp);
+}
+
+function portOffset(pos, d) {
+  if (pos === 'top')    return { x: 0, y: -d };
+  if (pos === 'bottom') return { x: 0, y:  d };
+  if (pos === 'left')   return { x: -d, y: 0 };
+  if (pos === 'right')  return { x:  d, y: 0 };
+  return { x: 0, y: 0 };
+}
+
+function refreshArrows() {
+  arrows.forEach(a => renderArrow(a));
+}
+
+// ─── TEMP LINE ───────────────────────────────────────────────────
+document.getElementById('canvas-wrap').addEventListener('mousemove', e => {
+  if (mode !== 'connect' || !connectSource) return;
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const from = getPortCenter(connectSource.nodeId, connectSource.pos);
+  const line = document.getElementById('temp-line');
+  line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
+  line.setAttribute('x2', e.clientX - rect.left); line.setAttribute('y2', e.clientY - rect.top);
+  line.setAttribute('opacity','1');
+});
+
+function hideTempLine() {
+  document.getElementById('temp-line').setAttribute('opacity','0');
+}
+
+// ─── DRAG MOVE ───────────────────────────────────────────────────
+document.addEventListener('mousemove', e => {
+  if (!draggingNode) return;
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const node = nodes.find(n => n.id === draggingNode);
+  if (!node) return;
+  node.x = Math.max(0, e.clientX - rect.left - dragOffset.x);
+  node.y = Math.max(0, e.clientY - rect.top  - dragOffset.y);
+  const el = document.getElementById('node-' + node.id);
+  if (el) { el.style.left = node.x + 'px'; el.style.top = node.y + 'px'; }
+  refreshArrows();
+});
+
+document.addEventListener('mouseup', () => { draggingNode = null; });
+
+// ─── CANVAS CLICK (deselect) ─────────────────────────────────────
+document.getElementById('canvas-wrap').addEventListener('mousedown', e => {
+  if (e.target === document.getElementById('canvas-wrap') ||
+      e.target === document.getElementById('canvas')) {
+    selectedId = null; selectedArrowId = null;
+    nodes.forEach(n => { const el = document.getElementById('node-'+n.id); if(el) el.classList.remove('selected'); });
+    document.querySelectorAll('.arrow-line').forEach(a => a.classList.remove('selected'));
+    document.getElementById('props-panel').innerHTML = '<p style="font-size:12px;color:var(--text-dim)">點選節點以編輯屬性</p>';
+  }
+});
+
+// ─── KEYBOARD ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+    deleteSelected();
+  }
+});
+
+function deleteSelected() {
+  if (selectedId) {
+    const el = document.getElementById('node-' + selectedId);
+    if (el) el.remove();
+    // remove connected arrows
+    arrows = arrows.filter(a => {
+      if (a.fromId === selectedId || a.toId === selectedId) {
+        const ag = document.getElementById('arrow-g-' + a.id);
+        if (ag) ag.remove();
+        return false;
+      }
+      return true;
+    });
+    nodes = nodes.filter(n => n.id !== selectedId);
+    selectedId = null;
+  }
+  if (selectedArrowId) {
+    const ag = document.getElementById('arrow-g-' + selectedArrowId);
+    if (ag) ag.remove();
+    arrows = arrows.filter(a => a.id !== selectedArrowId);
+    selectedArrowId = null;
+  }
+  updateStatus();
+  document.getElementById('props-panel').innerHTML = '<p style="font-size:12px;color:var(--text-dim)">點選節點以編輯屬性</p>';
+}
+
+function clearAll() {
+  if (!confirm('確定要清除所有內容嗎？')) return;
+  nodes = []; arrows = [];
+  document.getElementById('canvas').innerHTML = '';
+  document.getElementById('arrows-group').innerHTML = '';
+  selectedId = null; selectedArrowId = null;
+  updateStatus();
+}
+
+// ─── PROPS PANEL ─────────────────────────────────────────────────
+function updateProps(node) {
+  const panel = document.getElementById('props-panel');
+  panel.innerHTML = `
+    <label>節點文字</label>
+    <textarea id="prop-label" rows="2">${escHtml(node.label)}</textarea>
+    <label>節點類型</label>
+    <select id="prop-type">
+      <option value="start"    ${node.type==='start'?'selected':''}>開始</option>
+      <option value="end"      ${node.type==='end'?'selected':''}>結束</option>
+      <option value="process"  ${node.type==='process'?'selected':''}>處理程序</option>
+      <option value="decision" ${node.type==='decision'?'selected':''}>判斷/決策</option>
+      <option value="io"       ${node.type==='io'?'selected':''}>輸入/輸出</option>
+    </select>
+    <button class="tool-btn" onclick="applyProps(${node.id})" style="margin-top:4px;">套用</button>
+  `;
+}
+
+function applyProps(id) {
+  const node = nodes.find(n => n.id === id);
+  if (!node) return;
+  node.label = document.getElementById('prop-label').value;
+  node.type  = document.getElementById('prop-type').value;
+  const el = document.getElementById('node-' + id);
+  if (el) {
+    el.className = 'flow-node node-type-' + (node.type === 'end' ? 'end' : node.type);
+    el.classList.add('selected');
+  }
+  renderNode(node);
+  refreshArrows();
+}
+
+// ─── STATUS ───────────────────────────────────────────────────────
+function updateStatus() {
+  document.getElementById('status-nodes').textContent = '節點：' + nodes.length;
+  document.getElementById('status-arrows').textContent = '連線：' + arrows.length;
+}
+
+// ─── HINT ────────────────────────────────────────────────────────
+let hintTimeout;
+function showHint(msg) {
+  const h = document.getElementById('hint');
+  if (!msg) { h.classList.remove('show'); return; }
+  h.textContent = msg;
+  h.classList.add('show');
+  clearTimeout(hintTimeout);
+  hintTimeout = setTimeout(() => h.classList.remove('show'), 2500);
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────────
+function buildExportSVG() {
+  const wrap = document.getElementById('canvas-wrap');
+  const W = wrap.offsetWidth, H = wrap.offsetHeight;
+
+  // Collect node rects
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    const el = document.getElementById('node-'+n.id);
+    if (!el) return;
+    minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + el.offsetWidth);
+    maxY = Math.max(maxY, n.y + el.offsetHeight);
+  });
+  if (!isFinite(minX)) { minX=0; minY=0; maxX=W; maxY=H; }
+
+  const pad = 40;
+  const vW = maxX - minX + pad*2, vH = maxY - minY + pad*2;
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX-pad} ${minY-pad} ${vW} ${vH}" width="${vW}" height="${vH}" style="background:#0e0f14;font-family:sans-serif">`;
+  svg += `<defs><marker id="ah" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#7880a0"/></marker></defs>`;
+
+  // Arrows
+  arrows.forEach(a => {
+    const from = getPortCenter(a.fromId, a.fromPos);
+    const to   = getPortCenter(a.toId,   a.toPos);
+    const d = Math.sqrt((to.x-from.x)**2+(to.y-from.y)**2);
+    const bend = Math.min(80, d*0.4);
+    const fo = portOffset(a.fromPos, bend), to2 = portOffset(a.toPos, bend);
+    const cx1=from.x+fo.x, cy1=from.y+fo.y, cx2=to.x+to2.x, cy2=to.y+to2.y;
+    svg += `<path d="M${from.x},${from.y} C${cx1},${cy1} ${cx2},${cy2} ${to.x},${to.y}" stroke="#7880a0" stroke-width="2" fill="none" marker-end="url(#ah)"/>`;
+    if (a.label) {
+      const mx=(from.x+to.x)/2, my=(from.y+to.y)/2;
+      svg += `<text x="${mx}" y="${my-6}" text-anchor="middle" font-size="11" fill="#7880a0">${escHtml(a.label)}</text>`;
+    }
+  });
+
+  // Nodes
+  nodes.forEach(n => {
+    const el = document.getElementById('node-'+n.id);
+    if (!el) return;
+    const colors = NODE_COLORS[n.type] || NODE_COLORS.process;
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const cx = n.x + w/2, cy = n.y + h/2;
+
+    if (n.type === 'start' || n.type === 'end') {
+      svg += `<rect x="${n.x}" y="${n.y}" width="${w}" height="${h}" rx="${h/2}" fill="${colors.bg}" stroke="${colors.border}" stroke-width="2"/>`;
+    } else if (n.type === 'decision') {
+      const pts = `${cx},${n.y} ${n.x+w},${cy} ${cx},${n.y+h} ${n.x},${cy}`;
+      svg += `<polygon points="${pts}" fill="${colors.bg}" stroke="${colors.border}" stroke-width="2"/>`;
+    } else if (n.type === 'io') {
+      const off = w*0.12;
+      const pts = `${n.x+off},${n.y} ${n.x+w},${n.y} ${n.x+w-off},${n.y+h} ${n.x},${n.y+h}`;
+      svg += `<polygon points="${pts}" fill="${colors.bg}" stroke="${colors.border}" stroke-width="2"/>`;
+    } else {
+      svg += `<rect x="${n.x}" y="${n.y}" width="${w}" height="${h}" rx="8" fill="${colors.bg}" stroke="${colors.border}" stroke-width="2"/>`;
+    }
+    svg += `<text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="13" fill="${colors.text}">${escHtml(n.label)}</text>`;
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+function exportSVG() {
+  const svg = buildExportSVG();
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'flowchart.svg';
+  a.click();
+}
+
+function exportPNG() {
+  const svg = buildExportSVG();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, 'image/svg+xml');
+  const svgEl = doc.querySelector('svg');
+  const w = parseInt(svgEl.getAttribute('width'));
+  const h = parseInt(svgEl.getAttribute('height'));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w * 2; canvas.height = h * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+
+  const img = new Image();
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  img.src = URL.createObjectURL(blob);
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0);
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'flowchart.png';
+    a.click();
+  };
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+setMode('select');
+
+// Demo nodes
+setTimeout(() => {
+  const n1 = createNode('start', 200, 40, '開始');
+  const n2 = createNode('process', 185, 140, '讀取資料');
+  const n3 = createNode('decision', 160, 240, '資料有效？');
+  const n4 = createNode('process', 340, 280, '顯示錯誤');
+  const n5 = createNode('io', 170, 370, '輸出結果');
+  const n6 = createNode('end', 200, 460, '結束');
+  setTimeout(() => {
+    createArrow(n1.id,'bottom', n2.id,'top');
+    createArrow(n2.id,'bottom', n3.id,'top');
+    createArrow(n3.id,'right',  n4.id,'top');
+    createArrow(n3.id,'bottom', n5.id,'top');
+    createArrow(n4.id,'bottom', n5.id,'right');
+    createArrow(n5.id,'bottom', n6.id,'top');
+    arrows[2].label = '否';
+    arrows[3].label = '是';
+    refreshArrows();
+  }, 100);
+}, 100);
+</script>
+</body>
+</html>
